@@ -50,13 +50,13 @@ The neuron starts with random (wrong) values for weight and bias. At each step, 
 
 Here's what that looks like in practice. The neuron begins with `w=-1.0, b=8.0` — a line sloping the wrong way — and gradually adjusts until it fits the data:
 
-![fitting_progress](assets/fitting_progress.png)
+![fitting_progress](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/fitting_progress.png)
 
 Notice how the weight and bias values change at each step. The line rotates and shifts until it passes through the data points.
 
 The "error" the neuron is minimizing is called the **loss** — specifically, the mean squared error between its predictions and the actual values. Here's how the loss drops over training:
 
-![loss_curve](assets/loss_curve.png)
+![loss_curve](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/loss_curve.png)
 
 The loss falls steeply at first (big corrections are easy) and then levels off as the neuron fine-tunes its parameters. By the end, the neuron has learned `w=1.95, b=1.18` — very close to the true relationship `y = 2x + 1`.
 
@@ -94,7 +94,7 @@ The Loss Surface
 
 To see why this matters, plot the loss for every possible combination of weight and bias. This creates a **loss surface** — a landscape where height represents error:
 
-![loss_surface](assets/loss_surface.png)
+![loss_surface](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/loss_surface.png)
 
 Each point on this surface is one possible `(weight, bias)` pair and the loss it would produce. The valley at the bottom is the best fit. Gradient descent starts at a high point (our initial bad guess) and follows the slope downhill — the gradient at each point is like a compass pointing toward lower error.
 
@@ -102,7 +102,7 @@ For our simple single neuron, this surface is a smooth bowl with one valley — 
 
 Here's what a more complex loss landscape looks like:
 
-![local_minima](assets/local_minima.png)
+![local_minima](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/local_minima.png)
 
 The green marker is the **global minimum** — the absolute best solution. The red and orange markers are **local minima** — points that look like the bottom if you only check the immediate neighborhood, but aren't the true best. Gradient descent simply follows the slope downhill from wherever it starts, so it can easily get trapped in a local minimum and never reach the global one.
 
@@ -119,13 +119,13 @@ Gaussian splatting is a striking answer. It uses gradient descent to learn a 3D 
 
 The building block is a **2D Gaussian** — a soft blob of color that fades out from its center:
 
-![gaussian_isotropic](assets/gaussian_isotropic.png)
+![gaussian_isotropic](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/gaussian_isotropic.png)
 
 This is an **isotropic** Gaussian — equal spread in all directions. Its shape is defined by just a center position (μ) and a single variance (σ²). The contour rings show lines of equal density.
 
 But a circle can't represent much on its own. The power comes from allowing each Gaussian to be **stretched and rotated** by giving it a full covariance matrix:
 
-![gaussian_anisotropic](assets/gaussian_anisotropic.png)
+![gaussian_anisotropic](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/gaussian_anisotropic.png)
 
 The dashed lines show the principal axes — the directions of maximum and minimum spread. By adjusting the covariance matrix, a single Gaussian can become a thin sliver, a wide disc, or anything in between, oriented at any angle.
 
@@ -146,7 +146,7 @@ From there, the training loop is:
 5. **Backpropagate** — gradients flow through the loss, through the alpha-blending, through the projection, all the way back to each Gaussian's position, covariance, color, and opacity
 6. **Update** all parameters with gradient descent
 
-![gaussian_projection](assets/gaussian_projection.png)
+![gaussian_projection](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/gaussian_projection.png)
 
 The critical point: **every step in this pipeline is differentiable**. The projection is a matrix multiply. The covariance transform uses a Jacobian. Alpha-blending is a weighted sum. The loss is a standard differentiable function. Nothing breaks the gradient chain, so the system can learn to reconstruct an entire 3D scene using the same mechanism our single neuron used to learn `y = 2x + 1` — just with millions of parameters instead of two.
 
@@ -156,7 +156,7 @@ The critical point: **every step in this pipeline is differentiable**. The proje
 
 The same principle scales to the most powerful models in AI today. Look at the Transformer architecture — the engine behind GPT, Claude, and every modern large language model:
 
-![transformer](assets/transformer.png)
+![transformer](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/basics/assets/transformer.png)
 
 This diagram looks complex, but every single block in it is a differentiable mathematical operation:
 
