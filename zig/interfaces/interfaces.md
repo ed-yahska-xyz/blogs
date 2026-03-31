@@ -1,46 +1,47 @@
-Zig Interfaces Tutorial
+# Zig Interfaces Tutorial
 
 Compile-Time, Runtime, and Tagged Union Approaches (Using Shapes)
 
-This tutorial demonstrates Zig’s three approaches to polymorphism using a single example domain:
-	•	Rectangle
-	•	Square
-	•	Circle
-	•	Triangle
+This tutorial demonstrates Zig's three approaches to polymorphism using a single example domain:
+- Rectangle
+- Square
+- Circle
+- Triangle
 
 Each shape must implement:
-	•	area()
-	•	perimeter()
+- `area()`
+- `perimeter()`
 
 We will cover:
-	1.	Compile-time interface (generics / duck typing)
-	2.	Runtime interface (vtable pattern like std.mem.Allocator)
-	3.	Tagged union (closed set polymorphism)
+1. Compile-time interface (generics / duck typing)
+2. Runtime interface (vtable pattern like `std.mem.Allocator`)
+3. Tagged union (closed set polymorphism)
 
-For each approach we’ll also show:
-	•	How to create arrays of shapes
-	•	Memory management patterns
-	•	Gotchas and best practices
+For each approach we'll also show:
+- How to create arrays of shapes
+- Memory management patterns
+- Gotchas and best practices
 
-⸻
+---
 
-1️⃣ Compile-Time Interface (Generic / Duck Typing)
+## 1. Compile-Time Interface (Generic / Duck Typing)
 
-Concept
+### Concept
 
-Zig does not have a trait or interface keyword.
+Zig does not have a `trait` or `interface` keyword.
 
-Instead, a function can accept anytype, and the compiler verifies that the required methods exist at compile time.
+Instead, a function can accept `anytype`, and the compiler verifies that the required methods exist at compile time.
 
 There is:
-	•	Zero runtime overhead
-	•	No dynamic dispatch
-	•	One compiled version per concrete type
+- Zero runtime overhead
+- No dynamic dispatch
+- One compiled version per concrete type
 
-⸻
+---
 
-Shape Implementations
+### Shape Implementations
 
+```zig
 const std = @import("std");
 
 const Rectangle = struct {
@@ -94,23 +95,26 @@ const Triangle = struct {
         return std.math.sqrt(s * (s - self.a) * (s - self.b) * (s - self.c));
     }
 };
+```
 
+---
 
-⸻
+### Generic "Interface" Function
 
-Generic “Interface” Function
-
+```zig
 fn printShapeInfo(shape: anytype) void {
     std.debug.print("Area: {d}\n", .{shape.area()});
     std.debug.print("Perimeter: {d}\n\n", .{shape.perimeter()});
 }
+```
 
-If a type does not implement area() and perimeter(), compilation fails.
+If a type does not implement `area()` and `perimeter()`, compilation fails.
 
-⸻
+---
 
-Restricting the Interface Explicitly
+### Restricting the Interface Explicitly
 
+```zig
 fn printShapeInfoStrict(shape: anytype) void {
     const T = @TypeOf(shape);
 
@@ -121,67 +125,74 @@ fn printShapeInfoStrict(shape: anytype) void {
 
     std.debug.print("Area: {d}\n", .{shape.area()});
 }
+```
 
+---
 
-⸻
-
-Arrays in Compile-Time Approach
+### Arrays in Compile-Time Approach
 
 You cannot store mixed shapes in one array:
 
+```zig
 var arr = [_]Rectangle{ ... }; // OK
+```
 
 But this does NOT work:
 
-// ❌ Cannot mix types
+```zig
+// Cannot mix types
 var arr = [_]{ Rectangle{...}, Circle{...} };
+```
 
 Because there is no shared runtime type.
 
-Pattern: Separate Arrays Per Type
+**Pattern: Separate Arrays Per Type**
 
+```zig
 var rectangles = [_]Rectangle{
     .{ .width = 4, .height = 3 },
     .{ .width = 2, .height = 5 },
 };
+```
 
+---
 
-⸻
-
-Memory Management
+### Memory Management
 
 There are no special memory concerns here because:
-	•	Shapes are stored by value
-	•	No pointers required
-	•	No heap needed
+- Shapes are stored by value
+- No pointers required
+- No heap needed
 
 This is the safest approach.
 
-⸻
+---
 
-When to Use Compile-Time
-	•	Performance critical code
-	•	Type known at compile time
-	•	No heterogeneous collections needed
+### When to Use Compile-Time
 
-⸻
+- Performance critical code
+- Type known at compile time
+- No heterogeneous collections needed
 
-2️⃣ Runtime Interface (VTable Pattern)
+---
 
-Concept
+## 2. Runtime Interface (VTable Pattern)
 
-This is how std.mem.Allocator works.
+### Concept
 
-We create a Shape struct that contains:
-	•	ctx: *anyopaque
-	•	vtable: *const VTable
+This is how `std.mem.Allocator` works.
 
-This allows heterogeneous collections like []Shape.
+We create a `Shape` struct that contains:
+- `ctx: *anyopaque`
+- `vtable: *const VTable`
 
-⸻
+This allows heterogeneous collections like `[]Shape`.
 
-Define Runtime Interface
+---
 
+### Define Runtime Interface
+
+```zig
 const Shape = struct {
     ctx: *anyopaque,
     vtable: *const VTable,
@@ -199,12 +210,13 @@ const Shape = struct {
         return self.vtable.perimeter(self.ctx);
     }
 };
+```
 
+---
 
-⸻
+### Implement Rectangle for Runtime Interface
 
-Implement Rectangle for Runtime Interface
-
+```zig
 const Rectangle = struct {
     width: f64,
     height: f64,
@@ -231,72 +243,83 @@ const Rectangle = struct {
         };
     }
 };
+```
 
 Other shapes follow the same pattern.
 
-⸻
+---
 
-Array of Runtime Shapes
+### Array of Runtime Shapes
 
+```zig
 var shapes = std.ArrayList(Shape).init(allocator);
 try shapes.append(rect.asShape());
 try shapes.append(circle.asShape());
+```
 
 Now we can mix types freely.
 
-⸻
+---
 
-Memory Gotcha ⚠️
+### Memory Gotcha
 
 This is WRONG:
 
+```zig
 try shapes.append(Rectangle{ .width = 4, .height = 3 }.asShape());
+```
 
-Because the temporary Rectangle is destroyed immediately.
+Because the temporary `Rectangle` is destroyed immediately.
 
-The Shape stores a pointer to invalid memory.
+The `Shape` stores a pointer to invalid memory.
 
-⸻
+---
 
-Correct Lifetime Pattern
+### Correct Lifetime Pattern
 
-Concrete shapes must outlive the Shape handles.
+Concrete shapes must outlive the `Shape` handles.
 
-Stack Allocation
+**Stack Allocation**
 
+```zig
 var r = Rectangle{ .width = 4, .height = 3 };
 try shapes.append(r.asShape());
+```
 
-Heap Allocation
+**Heap Allocation**
 
+```zig
 const r = try allocator.create(Rectangle);
 r.* = .{ .width = 4, .height = 3 };
 try shapes.append(r.asShape());
+```
 
 Remember to free heap allocations later.
 
-⸻
+---
 
-Best Practices (Runtime Interface)
-	•	Use arena allocator for many small shapes
-	•	Ensure concrete types outlive interface handles
-	•	Avoid runtime interfaces unless necessary
-	•	Use when heterogeneous arrays are required
+### Best Practices (Runtime Interface)
 
-⸻
+- Use arena allocator for many small shapes
+- Ensure concrete types outlive interface handles
+- Avoid runtime interfaces unless necessary
+- Use when heterogeneous arrays are required
 
-3️⃣ Tagged Union (Closed Set Polymorphism)
+---
 
-Concept
+## 3. Tagged Union (Closed Set Polymorphism)
+
+### Concept
 
 When the set of possible types is known, use a tagged union.
 
 This is the most idiomatic Zig solution for AST-style problems.
 
-⸻
+---
 
-Define Tagged Union
+### Define Tagged Union
 
+```zig
 const Shape = union(enum) {
     rectangle: Rectangle,
     square: Square,
@@ -324,88 +347,91 @@ const Shape = union(enum) {
         };
     }
 };
+```
 
+---
 
-⸻
+### Array of Tagged Union Shapes
 
-Array of Tagged Union Shapes
-
+```zig
 var shapes = [_]Shape{
     .{ .rectangle = .{ .width = 4, .height = 3 } },
     .{ .circle = .{ .radius = 2 } },
     .{ .square = .{ .side = 5 } },
 };
+```
 
-This works because all elements are the same type: Shape.
+This works because all elements are the same type: `Shape`.
 
-⸻
+---
 
-Why Tagged Union Is Powerful
-	•	No pointers required
-	•	No heap required
-	•	Exhaustive switch
-	•	No runtime dispatch
-	•	Safer than vtables
+### Why Tagged Union Is Powerful
 
-⸻
+- No pointers required
+- No heap required
+- Exhaustive switch
+- No runtime dispatch
+- Safer than vtables
 
-Memory Behavior
+---
+
+### Memory Behavior
 
 Tagged union stores:
-	•	The largest variant
-	•	Plus a small tag
+- The largest variant
+- Plus a small tag
 
 Everything is stored inline.
 
 No lifetime issues.
 
-⸻
+---
 
-🔥 Comparison Summary
+## Comparison Summary
 
-Feature	Compile-Time	Runtime	Tagged Union
-Heterogeneous array	❌	✅	✅
-Runtime cost	None	Function pointer call	None
-Requires pointers	❌	✅	❌
-Safe lifetimes	✅	⚠️ Must manage	✅
-Open for extension	✅	✅	❌
-Compiler exhaustiveness	❌	❌	✅
-Idiomatic Zig choice	Often	When needed	Very common
+| Feature | Compile-Time | Runtime | Tagged Union |
+|---|---|---|---|
+| Heterogeneous array | No | Yes | Yes |
+| Runtime cost | None | Function pointer call | None |
+| Requires pointers | No | Yes | No |
+| Safe lifetimes | Yes | Must manage | Yes |
+| Open for extension | Yes | Yes | No |
+| Compiler exhaustiveness | No | No | Yes |
+| Idiomatic Zig choice | Often | When needed | Very common |
 
+---
 
-⸻
+## Practical Guidance
 
-🧠 Practical Guidance
+**Use Compile-Time When:**
+- Performance matters
+- Types known at compile time
+- No mixed collections needed
 
-Use Compile-Time When:
-	•	Performance matters
-	•	Types known at compile time
-	•	No mixed collections needed
+**Use Tagged Union When:**
+- Finite set of variants
+- AST nodes
+- Game entity types
+- Parsers
 
-Use Tagged Union When:
-	•	Finite set of variants
-	•	AST nodes
-	•	Game entity types
-	•	Parsers
+**Use Runtime Interface When:**
+- Need plugin-style extensibility
+- Types not known in advance
+- Allocators, writers, loggers
 
-Use Runtime Interface When:
-	•	Need plugin-style extensibility
-	•	Types not known in advance
-	•	Allocators, writers, loggers
+---
 
-⸻
-
-🚀 Final Takeaway
+## Final Takeaway
 
 Zig gives you three tools:
-	1.	Compile-time polymorphism (fastest)
-	2.	Tagged unions (most idiomatic for closed sets)
-	3.	Runtime interfaces (most flexible)
+1. Compile-time polymorphism (fastest)
+2. Tagged unions (most idiomatic for closed sets)
+3. Runtime interfaces (most flexible)
 
 In real Zig projects:
-	•	AST → tagged union
-	•	Allocator → runtime interface
-	•	Math utilities → compile-time
-	•	Game entities → tagged union
+- AST - tagged union
+- Allocator - runtime interface
+- Math utilities - compile-time
+- Game entities - tagged union
 
 Mastering when to choose each is a core Zig skill.
