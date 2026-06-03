@@ -1,0 +1,15 @@
+{
+  "name": "blogs-db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "bun run migrate.ts",
+    "seed": "bun run seed.ts"
+  },
+  "dependencies": {
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
