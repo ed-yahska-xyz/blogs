@@ -9,11 +9,18 @@ if (!url) {
 
 const sql = postgres(url);
 
+const APP_TZ = "America/Los_Angeles";
+const isoFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 const today = new Date();
 const iso = (offsetDays: number) => {
   const d = new Date(today);
-  d.setDate(d.getDate() - offsetDays);
-  return d.toISOString().split("T")[0]!;
+  d.setUTCDate(d.getUTCDate() - offsetDays);
+  return isoFmt.format(d);
 };
 
 const samples: { date: string; body: string }[] = [
