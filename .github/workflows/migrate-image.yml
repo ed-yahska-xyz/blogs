@@ -1,0 +1,40 @@
+name: Migration image
+
+# Builds and publishes the diary DB migration runner as a container image.
+# The kamaji compose stack runs it as a one-shot `migrate` service that gates
+# the app, so schema changes ship from this repo without any manual step.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "db/**"
+      - ".github/workflows/migrate-image.yml"
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    name: Build & push migration image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: db
+          file: db/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/blogs-migrate:latest
+            ghcr.io/${{ github.repository_owner }}/blogs-migrate:${{ github.sha }}
