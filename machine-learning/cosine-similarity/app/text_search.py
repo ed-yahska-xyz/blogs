@@ -58,12 +58,12 @@ from typing import Dict, List, Optional, Sequence, Union
 import numpy as np
 
 # Reuse the shared, format-agnostic cores — no duplicated embedding/rerank code.
-from commit_index import (
+from engine import (
     EMBED_DIM,
     db_path_for_jsonl,
     embed_texts,
     rerank_scores,
-    _unit_normalize,
+    unit_normalize,
 )
 
 # A document is either a bare string or a {"id"?: str, "text": str} mapping.
@@ -180,7 +180,7 @@ class TextIndex:
         self._docs = [{"id": i, "text": t} for i, t, _ in rows]
         vectors = [np.frombuffer(v, dtype=np.float32) for _, _, v in rows]
         if vectors:
-            self._matrix = _unit_normalize(np.vstack(vectors).astype(np.float32))
+            self._matrix = unit_normalize(np.vstack(vectors).astype(np.float32))
         else:
             self._matrix = np.zeros((0, EMBED_DIM), dtype=np.float32)
         return self

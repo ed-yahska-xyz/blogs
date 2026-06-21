@@ -268,8 +268,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("repo", help="owner/name shorthand or a full git URL.")
     parser.add_argument(
         "--db-dir",
-        default=".",
-        help="Directory for the per-repo JSONL + SQLite files (default: cwd).",
+        default="data",
+        help="Directory for the per-repo JSONL + SQLite files (default: data/).",
     )
     parser.add_argument(
         "--jsonl",

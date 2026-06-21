@@ -1,0 +1,65 @@
+{
+  "_comment": "Each query lists the video ids a good search system should surface. Use these to compute recall@k. Several queries deliberately share NO words with their target (e.g. 'leaky faucet' -> 'dripping tap') to test semantic matching over keyword matching.",
+  "queries": [
+    {
+      "id": "q1",
+      "text": "how do I fix a leaky faucet",
+      "relevant_ids": ["v004"],
+      "note": "No word overlap: 'leaky faucet' vs 'dripping tap'. Pure semantic match."
+    },
+    {
+      "id": "q2",
+      "text": "make good bread at home",
+      "relevant_ids": ["v001", "v002"],
+      "note": "Two relevant videos; tests recall of both."
+    },
+    {
+      "id": "q3",
+      "text": "vector search with neural embeddings",
+      "relevant_ids": ["v007"],
+      "note": "'vector search' vs 'semantic search engine' — semantic, light overlap."
+    },
+    {
+      "id": "q4",
+      "text": "learn to code in zig",
+      "relevant_ids": ["v010"],
+      "note": "Exact rare token 'zig'. Tests lexical strength; dense may also handle it."
+    },
+    {
+      "id": "q5",
+      "text": "start exercising at home without a gym",
+      "relevant_ids": ["v011"],
+      "note": "Semantic: 'exercising' vs 'workout', 'without a gym' vs 'no gym'."
+    },
+    {
+      "id": "q6",
+      "text": "is the vision pro worth buying",
+      "relevant_ids": ["v023"],
+      "note": "Product name match plus opinion intent."
+    },
+    {
+      "id": "q7",
+      "text": "saving money for the future",
+      "relevant_ids": ["v014", "v015"],
+      "note": "No exact overlap with 'index funds' or 'compound interest'. Hard semantic case."
+    },
+    {
+      "id": "q8",
+      "text": "what camera settings should I use",
+      "relevant_ids": ["v022"],
+      "note": "'camera settings' vs 'aperture, shutter, ISO' — semantic."
+    },
+    {
+      "id": "q9",
+      "text": "cheap trip to japan",
+      "relevant_ids": ["v017"],
+      "note": "'japan' -> 'Tokyo', 'cheap' -> 'budget'. Strong semantic test."
+    },
+    {
+      "id": "q10",
+      "text": "stretches for sitting at a desk all day",
+      "relevant_ids": ["v013"],
+      "note": "'stretches' vs 'mobility routine'."
+    }
+  ]
+}
