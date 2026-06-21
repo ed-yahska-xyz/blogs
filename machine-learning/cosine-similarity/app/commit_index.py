@@ -159,20 +159,35 @@ def embed_commits(
     else:
         docs = [commit_to_document(c, s) for c, s in zip(commits, summaries)]
 
+    return embed_texts(docs, batch_size=batch_size)
+
+
+def embed_texts(texts: Sequence[str], batch_size: int = 32) -> np.ndarray:
+    """Batch-embed raw texts with BGE-M3 -> RAW float32 matrix (N, 1024).
+
+    Format-agnostic core shared by the commit pipeline and the generic text
+    frontend. Batches are sized by a token-area budget (see
+    ``_ATTENTION_AREA_BUDGET``) so short texts pack into large batches while the
+    rare long text gets a small batch — the full 8192-token context is preserved
+    without blowing up attention memory. ``batch_size`` upper-bounds docs/batch.
+    """
+    if not texts:
+        return np.zeros((0, EMBED_DIM), dtype=np.float32)
+
     model = get_embedder()
-    lengths = _token_lengths(model, docs)
+    lengths = _token_lengths(model, texts)
 
     # Process longest-first so the heaviest (smallest) batches run while memory
     # is freshest; results are scattered back to original order at the end.
-    order = sorted(range(len(docs)), key=lambda i: lengths[i], reverse=True)
-    out = np.empty((len(docs), EMBED_DIM), dtype=np.float32)
+    order = sorted(range(len(texts)), key=lambda i: lengths[i], reverse=True)
+    out = np.empty((len(texts), EMBED_DIM), dtype=np.float32)
 
     for batch_idx in _area_batches(
         [lengths[i] for i in order], batch_size, _ATTENTION_AREA_BUDGET
     ):
         original = [order[j] for j in batch_idx]
         vecs = model.encode(
-            [docs[i] for i in original],
+            [texts[i] for i in original],
             batch_size=len(original),
             normalize_embeddings=False,
             convert_to_numpy=True,
@@ -181,6 +196,36 @@ def embed_commits(
         out[original] = np.asarray(vecs, dtype=np.float32)
 
     return out
+
+
+def rerank_scores(query: str, docs: Sequence[str]) -> List[float]:
+    """Cross-encoder relevance score for each (query, doc) pair (higher = better).
+
+    Format-agnostic core shared by the commit pipeline and the generic text
+    frontend. Returns scores aligned with ``docs`` (NOT sorted). Uses the same
+    attention-area batching as embedding: the cross-encoder pads each batch to
+    its longest pair, so a single batch of long docs over the 8192 context would
+    blow up memory. Length is dominated by the doc, so we batch on doc length.
+    """
+    if not docs:
+        return []
+    reranker = get_reranker()
+    lengths = _token_lengths(reranker, docs)
+    order = sorted(range(len(docs)), key=lambda i: lengths[i], reverse=True)
+
+    scores = [0.0] * len(docs)
+    for batch_idx in _area_batches(
+        [lengths[i] for i in order], 32, _ATTENTION_AREA_BUDGET
+    ):
+        original = [order[j] for j in batch_idx]
+        batch_scores = reranker.predict(
+            [[query, docs[i]] for i in original],
+            batch_size=len(original),
+            show_progress_bar=False,
+        )
+        for i, s in zip(original, batch_scores):
+            scores[i] = float(s)
+    return scores
 
 
 def _token_lengths(model: object, docs: Sequence[str]) -> List[int]:
@@ -433,28 +478,7 @@ class CommitIndex:
         if not candidates:
             return []
         docs = [commit_to_document(h.commit) for h in candidates]
-        reranker = get_reranker()
-
-        # Same attention-area cap as embedding: the cross-encoder pads each
-        # batch to its longest (query, doc) pair, so a single batch of long
-        # candidates over the 8192 context would blow up memory. Length is
-        # dominated by the document, so we batch on the doc's token length.
-        lengths = _token_lengths(reranker, docs)
-        order = sorted(range(len(docs)), key=lambda i: lengths[i], reverse=True)
-
-        scores = [0.0] * len(docs)
-        for batch_idx in _area_batches(
-            [lengths[i] for i in order], 32, _ATTENTION_AREA_BUDGET
-        ):
-            original = [order[j] for j in batch_idx]
-            batch_scores = reranker.predict(
-                [[query, docs[i]] for i in original],
-                batch_size=len(original),
-                show_progress_bar=False,
-            )
-            for i, s in zip(original, batch_scores):
-                scores[i] = float(s)
-
+        scores = rerank_scores(query, docs)
         reranked = [Hit(h.commit, s) for h, s in zip(candidates, scores)]
         reranked.sort(key=lambda h: h.score, reverse=True)
         return reranked[: max(top_n, 0)]
