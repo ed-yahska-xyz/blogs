@@ -24,7 +24,7 @@ pairwise comparison. So they live in **one comparison graph** over the same set
 of teams, with two kinds of edges, and a single strength model is fit on the
 whole thing.
 
-![One comparison graph, two streams of edges](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/comparison_graph.png)
+![One comparison graph, two streams of edges](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/comparison_graph.png)
 
 Solid edges are real results, dashed edges are one user's picks. They can
 disagree (here the user insists Brazil beats Germany even though the data has
@@ -78,7 +78,7 @@ So **the win probability is a logistic (sigmoid) function of the difference of
 log-strengths.** The raw-strength curve and the log-strength sigmoid are the
 same model in two coordinate systems:
 
-![Bradley–Terry: raw strength vs log strength](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/bradley_terry.png)
+![Bradley–Terry: raw strength vs log strength](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/bradley_terry.png)
 
 Left: `P(win)` vs the opponent's raw strength `p_j`, for a few players.
 Right: the same thing as a single symmetric sigmoid of the *gap*
@@ -117,7 +117,7 @@ where `y = 1` if `i` won. The key fact that makes this well-behaved:
 **landscape over all possible strength assignments**; the MLE is the location of
 its summit.
 
-![Bradley–Terry log-likelihood and its MLE](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/bt_likelihood.png)
+![Bradley–Terry log-likelihood and its MLE](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/bt_likelihood.png)
 
 Left: with 2 players, `ℓ` depends only on the single gap `δ = β_A - β_B`, a 1-D
 concave curve whose summit sits at `δ̂ = ln(wins / losses) = logit(win rate)`.
@@ -189,7 +189,7 @@ def elo_expected(r_a, r_b):
 This is the Bradley–Terry sigmoid wearing different units: a logistic in the
 rating gap, with base 10 and a scale of 400 instead of base *e* and scale 1.
 
-![Elo expected score around 1500](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/elo_curve.png)
+![Elo expected score around 1500](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/elo_curve.png)
 
 Fix `A` at 1500, sweep `B`. Equal ratings → 50%. A 400-point edge → about 91%.
 The "400" is just the chosen width of the curve.
@@ -216,7 +216,7 @@ If you were expected to win (`E` high) and did, `S - E` is small → tiny change
 Pull off an upset (`E` low, `S = 1`) → big jump. **The size of the move scales
 with how surprising the result was.**
 
-![Elo rating update for a 1500 player](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/elo_update.png)
+![Elo rating update for a 1500 player](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/elo_update.png)
 
 The new rating after a win (green) and a loss (red), sweeping the opponent. Beat
 a much stronger opponent → the win curve spikes; lose to a much weaker one → the
@@ -244,7 +244,7 @@ strength one of two equivalent ways:
 Plug either into `p_i / (p_i + p_j)` and it **collapses to the Elo expected score
 exactly** — the only difference is floating-point noise (`~10^-16`):
 
-![Bradley–Terry on the Elo scale equals the Elo curve](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/bt_vs_elo.png)
+![Bradley–Terry on the Elo scale equals the Elo curve](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/bt_vs_elo.png)
 
 Left: the Elo curve and both BT parameterizations plotted on top of each other;
 they coincide. Right: residuals vs Elo, which are pure rounding error. The
@@ -367,7 +367,7 @@ The weight on the user is **earned, not set by a slider**:
 - the **more (and more informative) comparisons** a team is in, the larger its
   `τ_user`, the harder the fusion pulls toward the user's opinion.
 
-![Fusion: how subjective picks and objective data combine](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/fusion.png)
+![Fusion: how subjective picks and objective data combine](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/fusion.png)
 
 Left: the naïve view, a linear blend with a hand-set slider `w`. Right: the
 Bayesian view this project actually uses — `w` is *earned*, growing like
@@ -401,7 +401,7 @@ Drawing each side's goals from its Poisson gives the **full scoreline
 distribution** — W/D/L *and* goal difference *and* goals scored, i.e. every
 tiebreaker the format needs.
 
-![Poisson goals model gives the tiebreakers](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/poisson_scorelines.png)
+![Poisson goals model gives the tiebreakers](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/poisson_scorelines.png)
 
 Left: the joint scoreline matrix for one fixture, with win/draw/loss regions.
 Right: how W/D/L shift as the strength gap changes, all read off the same goals
@@ -411,7 +411,7 @@ Run that over the group stage and the official knockout structure (Monte Carlo,
 or an exact bracket DP) and every team gets a per-round reach probability. The
 **differentiator** is the contrast:
 
-![Your bracket vs the data's bracket](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/bracket_comparison.png)
+![Your bracket vs the data's bracket](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/bracket_comparison.png)
 
 The same bracket simulated with the data strengths vs the user-fused strengths.
 "The model gives France 14%, your ranking pushes them to 22%" falls straight out
@@ -450,7 +450,7 @@ toss-up teaches the most. So the pairing, with probability `1 - ε`, serves the
 **most informative not-recently-shown pair** (max `p(1 - p)`, i.e. nearest
 50/50) given the *current fused* strengths.
 
-![Adaptive pairing: serve the matchups that carry information](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/script/fisher_information.png)
+![Adaptive pairing: serve the matchups that carry information](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/machine-learning/elo/assets/fisher_information.png)
 
 Left: `I = p(1 - p)` peaks at the coin-flip. Right: because the estimate's
 variance falls like `1 / (total information collected)`, always serving near-even
