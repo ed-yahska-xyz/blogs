@@ -346,9 +346,48 @@ curl https://edai.ed-yahska.xyz/v1/chat/completions \
 
 This two-turn loop *is* the agent loop, at its smallest. Everything an agentic framework does is this exchange, repeated, with more tools.
 
----
+### 4.4 Bonus: proving the server is stateless
 
-## 5. What these three examples add up to
+Every example above said "the client owns the conversation." Here's the proof in three requests (live captures, abridged). Tell the model your name:
+
+```bash
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [{"role": "user", "content": "Hi! My name is Akshay and I write a blog about AI inference."}],
+       "max_tokens": 64}'
+# → "Hi Akshay! It's great to meet you. ..."            (prompt_tokens: 28)
+```
+
+Ask for it back in a fresh request — *seconds later, same server, same model*:
+
+```bash
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [{"role": "user", "content": "What is my name?"}],
+       "max_tokens": 64}'
+# → "I do not know your name. As an AI, I only have access to the information
+#    provided during our current conversation, and you haven't told me your
+#    name yet."                                          (prompt_tokens: 18)
+```
+
+Total amnesia — it even insists you never introduced yourself. Now the same question with the history replayed in the `messages` array:
+
+```bash
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [
+         {"role": "user",      "content": "Hi! My name is Akshay and I write a blog about AI inference."},
+         {"role": "assistant", "content": "Hi Akshay! It'\''s great to meet you."},
+         {"role": "user",      "content": "What is my name?"}
+       ],
+       "max_tokens": 64}'
+# → "Your name is Akshay."                               (prompt_tokens: 65)
+```
+
+Nothing about the model changed between these calls — only the prompt did. "Memory" in a chat application is an illusion maintained by the client: every turn, the entire conversation is re-sent, re-tokenized, and re-billed (watch `prompt_tokens`: 28 → 18 → 65 — the third request pays for the whole history). This is also why prefill optimizations like prompt caching exist: when every request replays a growing prefix, caching that prefix's KV state is the difference between linear and quadratic total work across a conversation.
 
 - **One endpoint, one envelope.** Simple chat, reasoning, and tool use are all `POST /v1/chat/completions` with a `messages` array — the differences are a template kwarg and a `tools` list. This is why the OpenAI-compatible surface won: a Mac mini running `mlx_lm.server` behind mTLS is a drop-in substitute for a cloud API.
 - **The server is stateless; the client owns the conversation.** Each request replays the full history. (This is also why prompt/KV caching matters so much for multi-turn cost.)

@@ -376,9 +376,49 @@ curl https://edai.ed-yahska.xyz/v1/chat/completions \
 
 This two-turn loop *is* the agent loop, at its smallest. Everything an agentic framework does is this exchange, repeated, with more tools.
 
+### 3.4 LLMs are stateless
+
+Every example above said "the client owns the conversation." Here's the proof in three requests (live captures, abridged). Tell the model your name:
+
+```
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [{"role": "user", "content": "Hi! My name is Akshay and I write a blog about AI inference."}],
+       "max_tokens": 64}'
+# → "Hi Akshay! It's great to meet you. ..."            (prompt_tokens: 28)
+```
+
+Ask for it back in a fresh request — seconds later, same server, same model:
+
+```
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [{"role": "user", "content": "What is my name?"}],
+       "max_tokens": 64}'
+
+# → "I do not know your name. As an AI, I only have access to the information
+#    provided during our current conversation, and you haven't told me your
+#    name yet."                                          (prompt_tokens: 18)
+```
+
+Total amnesia — it even insists you never introduced yourself. Now the same question with the history replayed in the messages array:
+
+```
+curl -sS https://edai.ed-yahska.xyz/v1/chat/completions --cert demo-bundle.pem \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+       "messages": [
+         {"role": "user",      "content": "Hi! My name is Akshay and I write a blog about AI inference."},
+         {"role": "assistant", "content": "Hi Akshay! It'\''s great to meet you."},
+         {"role": "user",      "content": "What is my name?"}
+       ],
+       "max_tokens": 64}'
+```
 ---
 
-## 4. What these three examples add up to
+### 3.5. What these three examples add up to
 
 - **One endpoint, one envelope.** Simple chat, reasoning, and tool use are all `POST /v1/chat/completions` with a `messages` array — the differences are a template kwarg and a `tools` list. This is why the OpenAI-compatible surface won: a Mac mini running `mlx_lm.server` behind mTLS is a drop-in substitute for a cloud API.
 - **The server is stateless; the client owns the conversation.** Each request replays the full history. (This is also why prompt/KV caching matters so much for multi-turn cost.)
@@ -386,3 +426,150 @@ This two-turn loop *is* the agent loop, at its smallest. Everything an agentic f
 
 ---
 
+## 4 Demos
+
+Let's start with the basics. The bundle holds both the client cert and its EC key, so a single --cert covers both — no separate --key needed:
+
+# List models
+
+```
+curl -sS --cert secrets/demo-bundle.pem https://edai.ed-yahska.xyz/v1/models
+```
+
+# Server health (shows which model is currently loaded)
+
+```
+curl -sS --cert secrets/demo-bundle.pem https://edai.ed-yahska.xyz/health
+```
+
+Now the endpoint everything else is built on — this is the call an agent actually makes:
+
+```
+curl -sS --cert secrets/demo-bundle.pem \
+  https://edai.ed-yahska.xyz/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    "messages": [{"role": "user", "content": "Say pong"}],
+    "max_tokens": 64
+  }'
+```
+
+Next, streaming. Add stream: true, and -N to disable curl's buffering, and the response arrives as data: SSE chunks carrying delta.content:
+
+```
+curl -sSN --cert secrets/demo-bundle.pem \
+  https://edai.ed-yahska.xyz/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    "messages": [{"role": "user", "content": "Count 1 to 3"}],
+    "max_tokens": 64,
+    "stream": true
+  }'
+```
+
+And finally tool calling — the shape the whole agent loop rests on. Watch for finish_reason: "tool_calls" and a populated tool_calls array in the response:
+
+```
+curl -sS --cert secrets/demo-bundle.pem \
+  https://edai.ed-yahska.xyz/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model": "mlx-community/gemma-4-26b-a4b-it-4bit",
+    "messages": [{"role": "user", "content": "Run `uname -s` for me"}],
+    "tools": [{
+      "type": "function",
+      "function": {
+        "name": "run_command",
+        "description": "Run a shell command.",
+        "parameters": {
+          "type": "object",
+          "properties": {"cmd": {"type": "string"}},
+          "required": ["cmd"]
+        }
+      }
+    }],
+    "tool_choice": "auto",
+    "max_tokens": 2048
+  }'
+```
+
+# Article 1
+
+# Lautaro Martínez strikes late as Argentina complete comeback win over England
+
+*Argentina secure a place in the World Cup final with a dramatic stoppage-time winner. The victory extends their winning run to five games.*
+
+Argentina secured a dramatic comeback win to overcome England 2-1 at the Mercedes-Benz Stadium in Atlanta. After falling behind in the second half, Argentina fought back to claim victory in the final minutes of the semi-final.
+
+England took the lead in the 55th minute when Anthony Gordon found the net, assisted by Morgan Rogers. Despite trailing, Argentina dominated much of the play, recording 64% possession and 15 total shots compared to England's 5. The English side struggled to keep the ball, completing only 272 accurate passes from 324 attempts, while Argentina completed 537 accurate passes from 590.
+
+The momentum shifted late in the match as Argentina increased the pressure. Enzo Fernández levelled the score in the 85th minute, following an assist from Lionel Messi Cuccittini. The pressure culminated in the 90+2nd minute when Lautaro Martínez scored the decisive goal, also assisted by Lionel Messi Cuccittini, to make it 1-2.
+
+The statistical dominance of Argentina was reflected in the expected goals (xG) figures, with Argentina recording 1.84 xG to England's 0.53. Argentina also earned six corners to England's one and had five shots on target, while England managed only two.
+
+Referee Ismail Elfath issued several cautions during the contest. Elliot Anderson received a yellow card for England in the 37th minute. Argentina saw three players cautioned, with Lisandro Martínez booked in the 42nd minute, Cristian Romero in the 51st minute, and Rodrigo De Paul in the 90+4th minute.
+
+Argentina's victory extends their winning run to five games. England, who entered the match on a five-game run of three wins, two draws, and one loss, were unable to defend their lead.
+
+## TOP PERFORMERS
+
+- Lionel Messi Cuccittini (ARG) – 8.0 (2A)
+- Enzo Fernández (ARG) – 7.6 (1G)
+- Elliot Anderson (ENG) – 7.3
+- Leandro Paredes (ARG) – 7.2
+- Declan Rice (ENG) – 7.2
+- Morgan Rogers (ENG) – 7.2 (1A)
+
+# Article 2
+
+# Argentina fight back to edge England in World Cup semi-final
+
+*Argentina secure a late comeback win to defeat England in the World Cup semi-finals. The victory extends the winning run for Argentina to five league games.*
+
+Argentina defeat England 2-1 at the Mercedes-Benz Stadium to secure a place in the World Cup final. After falling behind in the first half, Argentina fought back to win the match with a decisive late winner.
+
+The match remained scoreless at half-time following a 0-0 draw in the first period. England took the lead in the 55th minute when Anthony Gordon scored, assisted by Morgan Rogers. However, Argentina fought back to level the score in the 85th minute through an Enzo Fernández goal, assisted by Lionel Messi Cuccittini. In stoppage time, Lautaro Martínez found the net in the 90+2' minute with an assist from Lionel Messi Cuccittini to secure the 1-2 victory.
+
+The statistical dominance of Argentina was evident throughout the match. Argentina finished with 64% possession compared to 36% for England. Argentina recorded 15 shots with 5 on target, while England registered 5 shots with 2 on target. Argentina also recorded 6 corners to England's 1 and completed 537 accurate passes compared to 272 for England. The xG for the match stood at 0.53 for England and 1.84 for Argentina.
+
+The referee, Ismail Elfath, issued yellow cards to Elliot Anderson in the 37', Lisandro Martínez in the 42', Cristian Romero in the 51', and Rodrigo De Paul in the 90+4'.
+
+Argentina substitutions included Nicolás González for Leandro Paredes in the 64', Rodrigo De Paul for Giuliano Simeone Baldini in the 72', Gonzalo Montiel for Nahuel Molina Lucero in the 72', Nicolás Otamendi for Lisandro Martínez in the 72', and Lautaro Martínez for Nicolás Tagliafico in the 81'. England made changes with Ezri Konsa Ngoyo for Anthony Gordon in the 72', Daniel Burn for Reece James in the 82', Nico O'Reilly for Declan Rice in the 82', Ivan Toney for John Stones in the 90+6', and Marcus Rashford for Diop Djed-Hotep Spence in the 90+6'.
+
+Top performers included Lionel Messi Cuccittini with an 8.0 rating, Enzo Fernández with a 7.6, Elliot Anderson with a 7.3, Leandro Paredes with a 7.2, Declan Rice with a 7.2, and Morgan Rogers with a 7.2.
+
+# Article 3
+
+# Defending champion Argentina rallies to beat England in Atlanta World Cup semifinal match
+
+Lionel Messi sent in the cross that sent Argentina to the World Cup final after another improbable comeback.
+
+Trailing 1-0 going into the last five minutes of regulation time, Messi fed a pinpoint ball to substitute Lautaro Martinez in the second minute of injury time to give the defending champions a 2-1 victory over England on Wednesday.
+
+Messi also provided the assist to Enzo Fernandez in the 85th minute for the equalizing goal.
+
+At the end of another exhausting match — another match in which Argentina was stretched to the final minutes — Messi dropped to his knees in celebration.
+
+Argentina, which will play Spain in the final on Sunday in East Rutherford, New Jersey, is now one game away from becoming the first team to win back-to-back World Cups since Brazil in 1958 and 1962.
+
+Anthony Gordon had given England the lead in the 55th minute but the team's other chances failed to find the back of the net.
+
+Fernandez scored the equalizer with a long range effort as Argentina pressed desperately for a goal, and Martinez headed in the winner with time running out.
+
+Argentina had to come through yet another tough match at this year's expanded 48-team tournament after surviving scares against Cape Verde and Egypt.
+
+The game resumed one of the biggest rivalries in international soccer and there was a raucous atmosphere in the stadium even before kickoff as both sets of fans tried to drown out the other team's national anthem.
+
+That continued on the field in a first half that was repeatedly broken up fouls.
+
+Leandro Paredes went in late on Jude Bellingham early in the game. Fernandez did likewise with Elliot Anderson soon after.
+
+A tense first half ended goalless, with no clear chances, but the game opened up after the break.
+
+England goalkeeper Jordan Pickford denied Julian Alvarez and Gordon found the breakthrough for England, converting a cross from Morgan Rogers.
+
+Argentina pressed. Substitute Nico Gonzalez was denied by Pickford and Alexis Mac Allister came even closer with a header off the post.
+
+## 5 Power profiles
