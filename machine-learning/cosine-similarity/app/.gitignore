@@ -1,0 +1,7 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
+# SQLite indexes — regenerable from the JSONL via:
+#   python sync_commits.py <repo> --migrate
+*.db

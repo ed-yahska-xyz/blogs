@@ -5,3 +5,5 @@ bun.lock
 # mTLS client certs/keys — never commit (no revocation path)
 *.pem
 stress-*/
+**/venv/
+**/venv313/

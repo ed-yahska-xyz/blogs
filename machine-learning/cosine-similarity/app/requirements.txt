@@ -1,0 +1,7 @@
+# Embedding + reranking engine (engine.py, commit_index.py, text_search.py).
+# Pulls in torch, transformers, and numpy transitively.
+sentence-transformers>=5
+numpy>=2
+
+# fetch_commits.py and sync_commits.py use only the Python standard library
+# plus the `git` CLI (which must be on PATH).
