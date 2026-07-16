@@ -1,5 +1,3 @@
-# Inference Engines
-
 Inference engines are software that help deploy trained pretrained tranformer models for inference i.e. send query get intelligent responses
 
 ## Similarities to Internet
