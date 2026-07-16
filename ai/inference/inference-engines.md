@@ -44,21 +44,49 @@ Crucially, **weights alone are not a runnable thing**. They're inert data. An in
 
 ## Three inference engines
 
-| | llama.cpp | vLLM | MLX (mlx-lm) |
-|---|---|---|---|
-| Format consumed | GGUF | Hub safetensors | MLX-converted safetensors |
-| Load strategy | mmap, lazy page-in, optional GPU offload | eager copy to VRAM, paged KV pre-allocation | load into unified memory, lazy graph |
-| Killer feature | runs quantized models anywhere, zero deps | PagedAttention + continuous batching for many users | zero-copy CPU/GPU on Apple Silicon |
-| Sweet spot | edge, laptops, single-file portability | multi-user GPU serving at scale | local dev on Macs |
-| Text input | `llama-cli` / OpenAI-compatible `llama-server` / C API | `LLM.generate()` / OpenAI-compatible `vllm serve` | Python API / `mlx_lm.generate` / `mlx_lm.server` |
+**llama.cpp**
+
+- Format consumed — GGUF
+- Load strategy — mmap, lazy page-in, optional GPU offload
+- Killer feature — runs quantized models anywhere, zero deps
+- Sweet spot — edge, laptops, single-file portability
+- Text input — `llama-cli` / OpenAI-compatible `llama-server` / C API
+
+**vLLM**
+
+- Format consumed — Hub safetensors
+- Load strategy — eager copy to VRAM, paged KV pre-allocation
+- Killer feature — PagedAttention + continuous batching for many users
+- Sweet spot — multi-user GPU serving at scale
+- Text input — `LLM.generate()` / OpenAI-compatible `vllm serve`
+
+**MLX (mlx-lm)**
+
+- Format consumed — MLX-converted safetensors
+- Load strategy — load into unified memory, lazy graph
+- Killer feature — zero-copy CPU/GPU on Apple Silicon
+- Sweet spot — local dev on Macs
+- Text input — Python API / `mlx_lm.generate` / `mlx_lm.server`
 
 Transformer forward pass — [Attention Is All You Need (Vaswani et al., 2017)](https://arxiv.org/abs/1706.03762) · [The Illustrated Transformer (Jay Alammar)](https://jalammar.github.io/illustrated-transformer/)
 
-| | Local (1 user) | Small service (~10s of users) | Data center (1000s of users) |
-|---|---|---|---|
-| **llama.cpp** | ✅ ideal — portable, tiny footprint | ✅ good — `llama-server`, parallel slots | ❌ no multi-GPU serving story |
-| **MLX** | ✅ ideal on Apple Silicon | ✅ good — `mlx_lm.server`, Mac mini economics | ❌ no rack-scale hardware path |
-| **vLLM** | ⚠️ overkill — pre-allocates VRAM for absent users | ✅ strong with a CUDA GPU + real traffic | ✅ ideal — this is its home turf |
+**llama.cpp**
+
+- Local (1 user) — ✅ ideal, portable, tiny footprint
+- Small service (~10s of users) — ✅ good, `llama-server`, parallel slots
+- Data center (1000s of users) — ❌ no multi-GPU serving story
+
+**MLX**
+
+- Local (1 user) — ✅ ideal on Apple Silicon
+- Small service (~10s of users) — ✅ good, `mlx_lm.server`, Mac mini economics
+- Data center (1000s of users) — ❌ no rack-scale hardware path
+
+**vLLM**
+
+- Local (1 user) — ⚠️ overkill, pre-allocates VRAM for absent users
+- Small service (~10s of users) — ✅ strong with a CUDA GPU + real traffic
+- Data center (1000s of users) — ✅ ideal, this is its home turf
 
 # MLX Hands-On: From Empty Directory to Served Tokens
 
@@ -505,6 +533,6 @@ That's the ceiling, not the average. A Mac mini pinned at full tilt, serving tok
 
 This is the meter with no bill attached, made literal.
 
-<img width="320" alt="cost" src="https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/ai/inference/assets/cost.jpg">
+![cost](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/ai/inference/assets/cost.jpg)
 
-<img width="320" alt="kwh" src="https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/ai/inference/assets/kwh.png">
+![kwh](https://raw.githubusercontent.com/ed-yahska-xyz/blogs/main/ai/inference/assets/kwh.png)
