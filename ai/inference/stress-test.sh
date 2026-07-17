@@ -22,7 +22,7 @@
 set -uo pipefail
 
 HOST="${HOST:-https://edai.ed-yahska.xyz}"
-CERT="${CERT:-demo-bundle.pem}"
+CERT="${CERT:-secrets/demo-bundle.pem}"
 MODEL="${MODEL:-mlx-community/gemma-4-26b-a4b-it-4bit}"
 DURATION="${DURATION:-3600}"        # seconds
 CONCURRENCY="${CONCURRENCY:-1}"     # parallel workers; 1 = back-to-back soak
